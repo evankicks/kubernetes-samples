@@ -1,0 +1,34 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: spring-nginx-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+    - hosts:
+        - webnew.dev.samsungheartwise.com
+      secretName: tls-secret
+  rules:
+    - host: webnew.dev.samsungheartwise.com
+      http:
+        paths:
+          - path: /cardiacrehab/v*
+            backend:
+              serviceName: spring-service
+              servicePort: 8081
+          - path: /cardiacrehab/webjars/spring*
+            backend:
+              serviceName: spring-service
+              servicePort: 8081
+          - path: /cardiacrehab/v*/api-docs*
+            backend:
+              serviceName: spring-service
+              servicePort: 8081
+          - path: /cardiacrehab/swagger*
+            backend:
+              serviceName: "spring-service"
+              servicePort: 8081

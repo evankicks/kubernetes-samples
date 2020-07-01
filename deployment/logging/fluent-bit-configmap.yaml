@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: fluent-bit-config
+    namespace: fluent-bit
+    labels:
+        app.kubernetes.io/name: fluentbit
+data:
+    fluent-bit.conf: |
+        [SERVICE]
+            Flush         2
+            Log_Level     info
+            Daemon        off
+            Parsers_File  parsers.conf
+            HTTP_Server   On
+            HTTP_Listen   0.0.0.0
+            HTTP_Port     2020
+        [INPUT]
+            Name              tail
+            Tag               kube.*
+            Path              /var/log/containers/*.log
+            Parser            docker
+            DB                /var/log/flb_kube.db
+            Mem_Buf_Limit     5MB
+            Skip_Long_Lines   On
+            Refresh_Interval  10
+        # [INPUT]
+        #     Name              tail
+        #     Tag               kube.*
+        #     Path              /var/log/*/*.log
+        #     Exclude_Path      /var/log/audit/*
+        #     Parser            docker
+        #     DB                /var/log/flb_kube.db
+        #     Mem_Buf_Limit     5MB
+        #     Skip_Long_Lines   On
+        #     Refresh_Interval  10                        
+        [FILTER]
+            Name                kubernetes 
+            Match               kube.*
+            Kube_URL            https://A2AFD93C5487E0476265AE709DC5FE91.gr7.us-east-1.eks.amazonaws.com:443
+            Merge_Log           On
+            Merge_Log_Key       Log_Processed
+            K8S-Logging.Parser  On
+            Annotations         On
+            Labels              On
+        [OUTPUT]
+            Name  es
+            Match *
+            Host  10.193.1.237
+            Port  9200
+            Logstash_Format On
+            Retry_Limit     False
+        [OUTPUT]
+            Name  es
+            Match kube.*random-generator*
+            Host  10.193.1.237
+            Port  9200
+            Logstash_Format On
+            Logstash_Prefix randomgenerator
+            Retry_Limit     False
+            Logstash_Prefix_Key randomgenerator
+        [OUTPUT]
+            Name  es
+            Match kube.*mongo-express*
+            Host  10.193.1.237
+            Port  9200
+            Logstash_Format On
+            Logstash_Prefix mongoexpress
+            Retry_Limit     False
+            Logstash_Prefix_Key mongoexpress
+        [OUTPUT]
+            Name  es
+            Match kube.*spring*
+            Host  10.193.1.237
+            Port  9200
+            Logstash_Format On
+            Logstash_Prefix springeks
+            Retry_Limit     False
+            Logstash_Prefix_Key springeks
+        [OUTPUT]
+            Name  es
+            Match kube.*jersey*
+            Host  10.193.1.237
+            Port  9200
+            Logstash_Format On
+            Logstash_Prefix jerseyeks
+            Retry_Limit     False
+            Logstash_Prefix_Key jerseyeks
+        [OUTPUT]
+            Name cloudwatch
+            Match kube.*spring*
+            region us-east-1
+            log_group_name fluent-bit-springeks
+            log_stream_prefix from-fluent-bit-spring
+            auto_create_group true
+            log_key log
+        [OUTPUT]
+            Name cloudwatch
+            Match kube.*jersey*
+            region us-east-1
+            log_group_name fluent-bit-jerseyeks
+            log_stream_prefix from-fluent-bit-jersey
+            auto_create_group true
+            log_key log
+
+    parsers.conf: |
+        [PARSER]
+            Name   nginx
+            Format regex
+            Regex ^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")
+            Time_Key time
+            Time_Format %d/%b/%Y:%H:%M:%S %z
+        [PARSER]
+            Name        docker
+            Format      json
+            Time_Key    time
+            Time_Format %Y-%m-%dT%H:%M:%S.%L
+            Time_Keep   On
+            # Command      |  Decoder | Field | Optional Action
+            # =============|==================|=================
+            Decode_Field_As   escaped    log

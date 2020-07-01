@@ -1,0 +1,76 @@
+# create amazon-cloudwatch namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: amazon-cloudwatch
+  labels:
+    name: amazon-cloudwatch
+---
+# create cwagent service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
+---
+# Role which gives permissions to collect metrics and logs
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cloudwatch-agent-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "endpoints"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["nodes/stats", "configmaps", "events"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["cwagent-clusterleader"]
+    verbs: ["get", "update"]
+
+---
+#Role Binding to svc account
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cloudwatch-agent-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: cloudwatch-agent
+    namespace: amazon-cloudwatch
+roleRef:
+  kind: ClusterRole
+  name: cloudwatch-agent-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# create configmap for cwagent config(Region for endpoint should be changed accordingly)
+apiVersion: v1
+data:
+  cwagentconfig.json: |
+    {
+      "logs": {
+        "metrics_collected": {
+          "kubernetes": {
+            "metrics_collection_interval": 60
+          }
+        },
+        "force_flush_interval": 5,
+        "endpoint_override": "logs.us-east-1.amazonaws.com"
+
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: cwagentconfig
+  namespace: amazon-cloudwatch
