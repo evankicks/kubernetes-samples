@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jerseyeks
+  labels:
+    app: jerseyeks
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - image: {FULL_IMAGE_NAME_WITH_VERSION}
+          name: jerseyeks
